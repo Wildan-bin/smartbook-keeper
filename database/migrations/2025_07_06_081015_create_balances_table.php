@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');  // e.g. "Cash", "E-Wallet", "Bank"
-            $table->decimal('initial_amount', 15, 2)->default(0);
+            // $table->decimal('initial_amount', 15, 2)->default(0);
             $table->decimal('current_amount', 15, 2)->default(0);
             $table->string('currency')->default('IDR');
             $table->boolean('is_active')->default(true);

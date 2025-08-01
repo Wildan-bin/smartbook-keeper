@@ -93,7 +93,7 @@ const user = usePage().props.auth.user
                         />
                     </div>
 
-                    <div>
+                    <!-- <div>
                         <label class="mb-1 block">Jumlah awal <i>(jika ada pemasukan awal)</i></label>
                         <input
                             type="number"
@@ -103,7 +103,7 @@ const user = usePage().props.auth.user
                             min="0"
                             step="1"
                         />
-                    </div>
+                    </div> -->
 
                     <button
                         type="submit"

@@ -14,14 +14,14 @@ class Balance extends Model
     protected $fillable = [
         'user_id',
         'name',
-        'initial_amount',
+        // 'initial_amount',
         'current_amount',
         'currency',
         'is_active'
     ];
 
     protected $casts = [
-        'initial_amount' => 'decimal:2',
+        // 'initial_amount' => 'decimal:2',
         'current_amount' => 'decimal:2',
         'is_active' => 'boolean',
     ];

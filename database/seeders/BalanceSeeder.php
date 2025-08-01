@@ -24,22 +24,22 @@ class BalanceSeeder extends Seeder
         $wallets = [
             [
                 'name' => 'Cash',
-                'initial_amount' => 1000000,
-                'current_amount' => 1000000,
+                // 'initial_amount' => 1000000,
+                'current_amount' => 0,
                 'currency' => 'IDR',
                 'is_active' => true
             ],
             [
                 'name' => 'Bank BRI',
-                'initial_amount' => 5000000,
-                'current_amount' => 5000000,
+                // 'initial_amount' => 5000000,
+                'current_amount' => 0,
                 'currency' => 'IDR',
                 'is_active' => true
             ],
             [
                 'name' => 'E-Wallet',
-                'initial_amount' => 500000,
-                'current_amount' => 500000,
+                // 'initial_amount' => 500000,
+                'current_amount' => 0,
                 'currency' => 'IDR',
                 'is_active' => true
             ]

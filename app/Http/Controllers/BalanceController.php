@@ -22,14 +22,14 @@ class BalanceController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'initial_amount' => 'nullable|numeric|min:0',
+            // 'initial_amount' => 'nullable|numeric|min:0',
             'currency' => 'required|string|size:3',
         ]);
 
         $balance = Balance::create([
             'user_id' => Auth::id(),
             'name' => $validated['name'],
-            'initial_amount' => $validated['initial_amount'] ?? 0,
+            // 'initial_amount' => $validated['initial_amount'] ?? 0,
             'current_amount' => $validated['initial_amount'] ?? 0,
             'currency' => $validated['currency'],
             'is_active' => true,
