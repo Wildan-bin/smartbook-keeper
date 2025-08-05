@@ -14,6 +14,16 @@ class BalanceResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'current_amount' => $this->current_amount,
+            'latest_transaction' => $this->transactions->first() ? [
+                'date' => $this->transactions->first()->date,
+                'amount' => $this->transactions->first()->amount,
+                'type' => $this->transactions->first()->type,
+            ] : null,
+            'created_at' => $this->created_at->format('Y-m-d H:i:s'),
+        ];
     }
 }
