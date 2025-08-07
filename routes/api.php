@@ -17,4 +17,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [UserController::class, 'profile']);
     Route::get('/balances', [FinancialController::class, 'balances']);
+    Route::get('/total-balance', [FinancialController::class, 'totalBalance']);
 });

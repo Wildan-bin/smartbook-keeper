@@ -25,4 +25,13 @@ class FinancialController extends Controller
 
         return BalanceResource::collection($balances);
     }
+
+    public function totalBalance(Request $request)
+    {
+        $totalBalance = $this->financialService->getUserTotalBalance(
+            $request->user()->id
+        );
+
+        return response()->json($totalBalance);
+    }
 }

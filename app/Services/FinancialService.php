@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Balance;
+use App\Models\User;
 use Carbon\Carbon;
 
 class FinancialService
@@ -22,5 +23,18 @@ class FinancialService
         return $query->with(['transactions' => function ($q) {
             $q->latest('date');
         }])->get();
+    }
+
+    public function getUserTotalBalance($userId)
+    {
+        $user = User::find($userId);
+        $totalBalance = Balance::where('user_id', $userId)
+            ->where('is_active', true)
+            ->sum('current_amount');
+
+        return [
+            'name' => $user->name,
+            'balance' => (string) $totalBalance
+        ];
     }
 }

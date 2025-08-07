@@ -2,6 +2,7 @@
 
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\BalanceController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
@@ -27,6 +28,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/balances', [TransactionController::class, 'balances'])->name('balances.index');
     Route::post('/balances', [TransactionController::class, 'storeBalance'])->name('balances.store');
     Route::post('/balances/category', [TransactionController::class, 'storeCategory'])->name('balances.category.store');
+
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
 });
 
 require __DIR__.'/settings.php';
