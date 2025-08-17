@@ -29,7 +29,7 @@ defineProps<{
                     </div>
                     <div>
                         <h1 class="text-xl font-bold text-gray-900">Smart BookKeeper</h1>
-                        <p class="text-sm text-gray-600">UMKM Financial App</p>
+                        <p class="text-sm text-gray-600">Aplikasi Keuangan UMKM</p>
                     </div>
                 </div>
 

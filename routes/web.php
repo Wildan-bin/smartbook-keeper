@@ -9,7 +9,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TransactionController;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome');
+    return Inertia::render('landing/welcome');
 
 })->name('home');
 
