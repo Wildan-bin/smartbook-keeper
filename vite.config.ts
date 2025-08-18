@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-    base: '',
+    base: '/public/build/',
     plugins: [
         laravel({
             input: ['resources/js/app.ts'],
@@ -19,6 +19,6 @@ export default defineConfig({
                     includeAbsolute: false,
                 },
             },
-        }),
+        }), 
     ],
 });
