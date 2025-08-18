@@ -76,7 +76,7 @@ defineProps<{
                     <div class="mb-12 flex items-center justify-center gap-8">
                         <div class="group">
                             <img 
-                                src="/images/unmer-smartbookkeeper.png" 
+                                src="{{ asset('images/unmer-smartbookkeeper.png') }}" 
                                 alt="Universitas Merdeka Malang" 
                                 class="h-20 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
                             />
@@ -84,7 +84,7 @@ defineProps<{
                         <div class="w-px h-16 bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
                         <div class="group">
                             <img 
-                                src="/images/diktisainter-smartbookkeeper.png" 
+                                src="{{ asset('images/diktisainter-smartbookkeeper.png') }}" 
                                 alt="Pengabdian Kepada Masyarakat" 
                                 class="h-20 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
                             />
