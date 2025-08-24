@@ -12,13 +12,32 @@ import {
     ChevronDown,
     User
 } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
-const isSidebarOpen = ref(true);
+const isSidebarOpen = ref(false); // Default closed on mobile
 const isUserMenuOpen = ref(false);
+const isMobile = ref(false);
+const hoveredItem = ref(null);
+const showTooltip = ref(false);
+
+// Check screen size
+const checkScreenSize = () => {
+    isMobile.value = window.innerWidth < 1024;
+    // Auto-close sidebar on mobile when screen resizes
+    if (isMobile.value) {
+        isSidebarOpen.value = false;
+    } else {
+        isSidebarOpen.value = true;
+    }
+};
 
 const toggleSidebar = () => {
     isSidebarOpen.value = !isSidebarOpen.value;
+    // Reset hover states when toggling
+    hoveredItem.value = null;
+    showTooltip.value = false;
+    // Close user menu when toggling sidebar
+    isUserMenuOpen.value = false;
 };
 
 const toggleUserMenu = () => {
@@ -28,6 +47,42 @@ const toggleUserMenu = () => {
 const handleLogout = () => {
     router.post(route('logout'));
 };
+
+// Handle tooltip showing in collapsed mode
+const handleMouseEnter = (item) => {
+    if (!isSidebarOpen.value && !isMobile.value) {
+        hoveredItem.value = item;
+        showTooltip.value = true;
+    }
+};
+
+const handleMouseLeave = () => {
+    hoveredItem.value = null;
+    showTooltip.value = false;
+};
+
+// Close sidebar when clicking outside on mobile - FIXED
+const handleOutsideClick = (event) => {
+    if (isMobile.value && isSidebarOpen.value) {
+        const sidebar = document.querySelector('aside');
+        const mobileHeader = document.querySelector('.mobile-header');
+        if (sidebar && !sidebar.contains(event.target) && 
+            mobileHeader && !mobileHeader.contains(event.target)) {
+            isSidebarOpen.value = false;
+        }
+    }
+};
+
+onMounted(() => {
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    document.addEventListener('click', handleOutsideClick);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', checkScreenSize);
+    document.removeEventListener('click', handleOutsideClick);
+});
 
 defineProps({
     user: {
@@ -77,33 +132,82 @@ const isRouteActive = (routeName, routePattern = null) => {
 
 <template>
     <div class="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50"> 
-        <!-- Backdrop for mobile -->
+        <!-- Mobile Header Bar - FIXED Z-INDEX -->
         <div 
-            v-if="isSidebarOpen" 
+            v-if="isMobile" 
+            class="mobile-header fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-b border-gray-200/50 shadow-sm"
+        >
+            <div class="flex items-center justify-between px-4 py-3">
+                <!-- Mobile Logo & Menu Button -->
+                <div class="flex items-center gap-3">
+                    <button 
+                        @click.stop="toggleSidebar" 
+                        class="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-[#007abb] to-[#2FABEC] rounded-xl shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 relative z-10"
+                    >
+                        <Menu v-if="!isSidebarOpen" class="w-5 h-5 text-white" />
+                        <X v-else class="w-5 h-5 text-white" />
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-[#007abb] to-[#2FABEC] rounded-lg">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-sm font-bold text-gray-900">
+                                <a :href="route('home')">Smart BookKeeper</a></h1>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile User Info -->
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-[#007abb] to-[#2FABEC] rounded-lg">
+                        <User class="w-4 h-4 text-white" />
+                    </div>
+                    <div class="hidden xs:block">
+                        <p class="text-sm font-medium text-gray-900">{{ user.name.split(' ')[0] }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backdrop for mobile - FIXED Z-INDEX -->
+        <div 
+            v-if="isSidebarOpen && isMobile" 
             @click="toggleSidebar"
-            class="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden"
+            class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
         ></div>
 
-        <!-- Sidebar -->
+        <!-- Sidebar - FIXED Z-INDEX AND POSITIONING -->
         <aside
-            class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white/95 backdrop-blur-xl shadow-2xl transition-all duration-300 border-r border-white/20"
+            class="fixed inset-y-0 left-0 z-50 flex flex-col bg-white/98 backdrop-blur-xl shadow-2xl transition-all duration-300 border-r border-white/20"
             :class=" [
-                isSidebarOpen ? 'w-80' : 'w-28',
-                isSidebarOpen ? 'rounded-r-3xl' : 'rounded-r-2xl'
+                // Width classes
+                isMobile 
+                    ? (isSidebarOpen ? 'w-80' : 'w-0 overflow-hidden') 
+                    : (isSidebarOpen ? 'w-80' : 'w-20'),
+                // Border radius classes  
+                isMobile
+                    ? 'rounded-r-none'
+                    : (isSidebarOpen ? 'rounded-r-3xl' : 'rounded-r-2xl'),
+                // Transform classes for mobile - FIXED
+                isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'
             ]"
         >
-            <!-- Header Section -->
+            <!-- Header Section - FIXED TO SHOW ON MOBILE -->
             <div class="relative overflow-hidden">
                 <!-- Background Gradient -->
                 <div class="absolute inset-0 bg-gradient-to-br from-[#007abb] via-[#1a8dd4] to-[#2FABEC]"></div>
                 
                 <!-- Background Pattern -->
                 <div class="absolute inset-0 opacity-10">
-                    <div class="absolute top-4 right-4 w-20 h-20 rounded-full border-2 border-white/30"></div>
-                    <div class="absolute bottom-2 right-8 w-12 h-12 rounded-full border-2 border-white/20"></div>
+                    <div class="absolute top-4 right-4 w-16 sm:w-20 h-16 sm:h-20 rounded-full border-2 border-white/30"></div>
+                    <div class="absolute bottom-2 right-6 sm:right-8 w-10 sm:w-12 h-10 sm:h-12 rounded-full border-2 border-white/20"></div>
                 </div>
 
-                <div class="relative z-10 flex items-center justify-between p-5 border-b border-white/10">
+                <!-- Universal Header for Both Mobile & Desktop -->
+                <div class="relative z-10 flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
                     <!-- Logo and Brand -->
                     <div class="flex items-center gap-3">
                         <div class="flex items-center justify-center w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl">
@@ -111,24 +215,46 @@ const isRouteActive = (routeName, routePattern = null) => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                         </div>
+                        <!-- Show brand name when sidebar is open (both mobile and desktop) -->
                         <div v-if="isSidebarOpen" class="transition-all duration-300">
-                            <h1 class="text-xl font-bold text-white leading-tight">Smart BookKeeper</h1>
-                            <!-- <p class="text-xs text-white/80 font-medium">Keeper</p> -->
+                            <h1 class="text-lg sm:text-xl font-bold text-white leading-tight">Smart BookKeeper</h1>
+                            <p class="text-xs text-white/70 hidden sm:block">Financial Management</p>
                         </div>
                     </div>
 
-                    <!-- Toggle Button -->
+                    <!-- Toggle Button - Enhanced for all modes -->
                     <button 
-                        @click="toggleSidebar" 
-                        class="flex items-center justify-center ml-2 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-all duration-200 group"
+                        @click.stop="toggleSidebar" 
+                        class="relative flex items-center justify-center transition-all duration-200 group z-10"
+                        :class=" [
+                            isSidebarOpen 
+                                ? 'w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30' 
+                                : 'w-12 h-12 bg-white/30 backdrop-blur-md rounded-xl hover:bg-white/40 shadow-lg hover:shadow-xl'
+                        ]"
                     >
-                        <Menu v-if="!isSidebarOpen" class="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                        <!-- Enhanced Menu Icon for collapsed mode -->
+                        <div v-if="!isSidebarOpen" class="relative">
+                            <Menu class="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
+                            <!-- Active indicator dots for collapsed mode -->
+                            <div class="absolute -top-1 -right-1 flex gap-0.5">
+                                <div 
+                                    v-for="(item, index) in navigationItems" 
+                                    :key="index"
+                                    class="w-1.5 h-1.5 rounded-full transition-all duration-200"
+                                    :class=" [
+                                        isRouteActive(item.route, item.routePattern) 
+                                            ? 'bg-yellow-300 shadow-sm' 
+                                            : 'bg-white/40'
+                                    ]"
+                                ></div> 
+                            </div>
+                        </div>
                         <X v-else class="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
                     </button>
                 </div>
 
-                <!-- Welcome Message -->
-                <div v-if="isSidebarOpen" class="relative z-10 px-6 py-4">
+                <!-- Welcome Message for Mobile & Tablet -->
+                <div v-if="isSidebarOpen" class="relative z-10 px-4 py-4">
                     <div class="text-white/90 text-sm">
                         <p class="font-medium">Selamat datang kembali!</p>
                         <p class="text-xs text-white/70">{{ user.name.split(' ')[0] }}</p>
@@ -137,78 +263,131 @@ const isRouteActive = (routeName, routePattern = null) => {
             </div>
 
             <!-- Navigation Section -->
-            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <nav class="flex-1 p-3 sm:p-4 space-y-2 overflow-y-auto">
                 <div v-if="isSidebarOpen" class="px-3 py-2">
                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Menu Utama</p>
                 </div>
 
                 <!-- Navigation Links -->
                 <template v-for="item in navigationItems" :key="item.route">
-                    <Link
-                        :href="route(item.route)"
-                        class="group relative flex items-center rounded-2xl p-3 transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:shadow-sm"
-                        :class=" [
-                            isRouteActive(item.route, item.routePattern) 
-                                ? 'bg-gradient-to-r from-[#007abb]/10 to-[#2FABEC]/10 text-[#007abb] shadow-sm border-l-4 border-[#007abb]' 
-                                : 'text-gray-700 hover:text-[#007abb]'
-                        ]"
-                    >
-                        <!-- Active Indicator -->
-                        <div 
-                            v-if="isRouteActive(item.route, item.routePattern)" 
-                            class="absolute right-3 w-2 h-2 bg-[#007abb] rounded-full animate-pulse"
-                        ></div>
-
-                        <!-- Icon Container -->
-                        <div class="relative flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200"
-                             :class=" [
+                    <div class="relative">
+                        <Link
+                            :href="route(item.route)"
+                            @mouseenter="handleMouseEnter(item)"
+                            @mouseleave="handleMouseLeave"
+                            @click="isMobile && (isSidebarOpen = false)"
+                            class="group relative flex items-center transition-all duration-200 hover:shadow-sm active:scale-95"
+                            :class=" [
+                                isSidebarOpen ? 'rounded-xl sm:rounded-2xl p-3' : 'rounded-xl p-3 mx-auto w-14 h-14 justify-center',
+                                isSidebarOpen 
+                                    ? 'hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50' 
+                                    : 'hover:bg-gradient-to-br hover:from-blue-50 hover:to-white hover:scale-105',
                                 isRouteActive(item.route, item.routePattern) 
-                                    ? 'bg-[#007abb]/15 text-[#007abb]' 
-                                    : 'bg-gray-100 group-hover:bg-white group-hover:shadow-sm'
-                             ]">
-                            <component :is="item.icon" class="w-5 h-5 transition-transform group-hover:scale-110" />
-                        </div>
+                                    ? isSidebarOpen
+                                        ? 'bg-gradient-to-r from-[#007abb]/10 to-[#2FABEC]/10 text-[#007abb] shadow-sm border-l-4 border-[#007abb]'
+                                        : 'bg-gradient-to-br from-[#007abb]/20 to-[#2FABEC]/20 text-[#007abb] shadow-lg scale-105 ring-2 ring-[#007abb]/30'
+                                    : 'text-gray-700 hover:text-[#007abb]'
+                            ]"
+                        >
+                            <!-- Active Indicator for expanded mode -->
+                            <div 
+                                v-if="isRouteActive(item.route, item.routePattern) && isSidebarOpen" 
+                                class="absolute right-3 w-2 h-2 bg-[#007abb] rounded-full animate-pulse"
+                            ></div>
 
-                        <!-- Text Content -->
-                        <div v-if="isSidebarOpen" class="ml-4 flex-1 transition-all duration-300">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="font-semibold text-sm leading-tight">{{ item.name }}</p>
-                                    <p class="text-xs text-gray-500 group-hover:text-gray-600 transition-colors">
-                                        {{ item.description }}
-                                    </p>
+                            <!-- Active Indicator for collapsed mode -->
+                            <div 
+                                v-if="isRouteActive(item.route, item.routePattern) && !isSidebarOpen" 
+                                class="absolute -top-1 -right-1 w-3 h-3 bg-[#007abb] rounded-full animate-pulse shadow-sm"
+                            ></div>
+
+                            <!-- Icon Container -->
+                            <div 
+                                class="relative flex items-center justify-center transition-all duration-200"
+                                :class=" [
+                                    isSidebarOpen ? 'w-10 h-10 rounded-xl' : 'w-8 h-8 rounded-lg',
+                                    isRouteActive(item.route, item.routePattern) 
+                                        ? 'bg-[#007abb]/15 text-[#007abb]' 
+                                        : 'bg-gray-100 group-hover:bg-white group-hover:shadow-sm'
+                                ]"
+                            >
+                                <component 
+                                    :is="item.icon" 
+                                    class="transition-transform group-hover:scale-110" 
+                                    :class="isSidebarOpen ? 'w-5 h-5' : 'w-6 h-6'"
+                                />
+                            </div>
+
+                            <!-- Text Content for expanded mode -->
+                            <div v-if="isSidebarOpen" class="ml-4 flex-1 transition-all duration-300">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="font-semibold text-sm leading-tight">{{ item.name }}</p>
+                                        <p class="text-xs text-gray-500 group-hover:text-gray-600 transition-colors">
+                                            {{ item.description }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Hover Effect -->
-                        <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#007abb]/5 to-[#2FABEC]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                    </Link>
+                            <!-- Hover Effect -->
+                            <div 
+                                class="absolute inset-0 bg-gradient-to-r from-[#007abb]/5 to-[#2FABEC]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                :class="isSidebarOpen ? 'rounded-xl sm:rounded-2xl' : 'rounded-xl'"
+                            ></div>
+                        </Link>
+
+                        <!-- Tooltip for collapsed mode (desktop only) -->
+                        <div 
+                            v-if="!isSidebarOpen && !isMobile && hoveredItem === item && showTooltip"
+                            class="absolute left-full top-1/2 transform -translate-y-1/2 ml-4 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-xl z-[70] whitespace-nowrap animate-in slide-in-from-left-2 duration-200"
+                        >
+                            <div class="font-medium">{{ item.name }}</div>
+                            <div class="text-xs text-gray-300">{{ item.description }}</div>
+                            <!-- Arrow -->
+                            <div class="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 rotate-45"></div>
+                        </div>
+                    </div>
                 </template>
 
                 <!-- Divider -->
                 <div v-if="isSidebarOpen" class="my-4 border-t border-gray-200"></div>
 
                 <!-- Quick Stats (when expanded) -->
-                <div v-if="isSidebarOpen" class="px-3 py-4 bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl border border-gray-100">
+                <div v-if="isSidebarOpen" class="px-3 py-4 bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl sm:rounded-2xl border border-gray-100">
                     <div class="text-center">
                         <div class="text-2xl font-bold text-[#007abb]">🎯</div>
                         <p class="text-xs text-gray-600 mt-1">Kelola keuangan dengan mudah</p>
                     </div>
                 </div>
+
+                <!-- Collapsed mode info -->
+                <div v-if="!isSidebarOpen && !isMobile" class="px-2 py-3 text-center">
+                    <div class="w-8 h-8 mx-auto bg-gradient-to-br from-[#007abb]/10 to-[#2FABEC]/10 rounded-lg flex items-center justify-center mb-2">
+                        <div class="w-2 h-2 bg-[#007abb] rounded-full animate-pulse"></div>
+                    </div>
+                </div>
             </nav>
 
-            <!-- User Menu Section -->
+            <!-- User Menu Section - FIXED POSITIONING -->
             <div class="border-t border-gray-100 bg-white/80 backdrop-blur-sm">
-                <div class="p-4">
+                <div class="p-3 sm:p-4">
                     <div class="relative">
                         <button 
-                            @click="toggleUserMenu" 
-                            class="group w-full flex items-center rounded-2xl p-3 text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 transition-all duration-200 hover:shadow-sm"
+                            @click.stop="toggleUserMenu" 
+                            @mouseenter="handleMouseEnter({ name: user.name, description: 'Pengaturan akun' })"
+                            @mouseleave="handleMouseLeave"
+                            class="group w-full flex items-center text-gray-700 transition-all duration-200 hover:shadow-sm active:scale-95 relative z-10"
+                            :class=" [
+                                isSidebarOpen 
+                                    ? 'rounded-xl sm:rounded-2xl p-3 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50' 
+                                    : 'rounded-xl p-2 justify-center hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50 hover:scale-105'
+                            ]"
                         >
                             <!-- Avatar -->
-                            <div class="relative flex items-center justify-center w-10 h-10 bg-gradient-to-br from-[#007abb] to-[#2FABEC] rounded-xl shadow-sm">
-                                <User class="w-5 h-5 text-white" />
+                            <div class="relative flex items-center justify-center bg-gradient-to-br from-[#007abb] to-[#2FABEC] rounded-xl shadow-sm"
+                                 :class="isSidebarOpen ? 'w-10 h-10' : 'w-12 h-12'">
+                                <User :class="isSidebarOpen ? 'w-5 h-5' : 'w-6 h-6'" class="text-white" />
                                 <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
                             </div>
 
@@ -226,15 +405,27 @@ const isRouteActive = (routeName, routePattern = null) => {
                             />
                         </button>
 
-                        <!-- Dropdown Menu -->
+                        <!-- Tooltip for user menu in collapsed mode -->
                         <div 
-                            v-if="isUserMenuOpen" 
-                            class="absolute bottom-full left-0 mb-2 w-full bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in slide-in-from-bottom-2 duration-200"
+                            v-if="!isSidebarOpen && !isMobile && hoveredItem?.name === user.name && showTooltip"
+                            class="absolute left-full top-1/2 transform -translate-y-1/2 ml-4 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-xl z-[70] whitespace-nowrap animate-in slide-in-from-left-2 duration-200"
+                        >
+                            <div class="font-medium">{{ user.name }}</div>
+                            <div class="text-xs text-gray-300">{{ user.email }}</div>
+                            <!-- Arrow -->
+                            <div class="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 rotate-45"></div>
+                        </div>
+
+                        <!-- Dropdown Menu - FIXED Z-INDEX -->
+                        <div 
+                            v-if="isUserMenuOpen && isSidebarOpen" 
+                            class="absolute bottom-full left-0 mb-2 w-full bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in slide-in-from-bottom-2 duration-200 z-[60]"
                         >
                             <div class="p-2 space-y-1">
                                 <Link 
                                     :href="route('profile.edit')" 
-                                    class="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-colors duration-150 group"
+                                    @click="isMobile && (isSidebarOpen = false)"
+                                    class="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-colors duration-150 group active:scale-95"
                                 >
                                     <div class="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg group-hover:bg-blue-100 transition-colors mr-3">
                                         <Settings class="w-4 h-4 text-gray-600 group-hover:text-blue-600" />
@@ -249,7 +440,7 @@ const isRouteActive = (routeName, routePattern = null) => {
                                 
                                 <button 
                                     @click="handleLogout" 
-                                    class="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors duration-150 group"
+                                    class="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors duration-150 group active:scale-95"
                                 >
                                     <div class="flex items-center justify-center w-8 h-8 bg-red-100 rounded-lg group-hover:bg-red-200 transition-colors mr-3">
                                         <LogOut class="w-4 h-4 text-red-600" />
@@ -267,7 +458,15 @@ const isRouteActive = (routeName, routePattern = null) => {
         </aside>
 
         <!-- Main Content -->
-        <div class="transition-all duration-300" :class="{ 'ml-72': isSidebarOpen, 'ml-20': !isSidebarOpen }">
+        <div 
+            class="transition-all duration-300" 
+            :class="{ 
+                'ml-80': isSidebarOpen && !isMobile, 
+                'ml-20': !isSidebarOpen && !isMobile,
+                'ml-0': isMobile,
+                'pt-16': isMobile
+            }"
+        >
             <main class="min-h-screen">
                 <slot />
             </main>
@@ -288,12 +487,27 @@ const isRouteActive = (routeName, routePattern = null) => {
     }
 }
 
+@keyframes slide-in-from-left {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .animate-in {
     animation-fill-mode: both;
 }
 
 .slide-in-from-bottom-2 {
     animation: slide-in-from-bottom 0.2s ease-out;
+}
+
+.slide-in-from-left-2 {
+    animation: slide-in-from-left 0.2s ease-out;
 }
 
 /* Custom scrollbar */
@@ -332,16 +546,64 @@ nav::-webkit-scrollbar-thumb:hover {
     .backdrop-blur-sm {
         backdrop-filter: blur(4px);
     }
+    .backdrop-blur-lg {
+        backdrop-filter: blur(12px);
+    }
 }
 
-/* Mobile responsiveness */
+/* Mobile specific styles */
 @media (max-width: 1024px) {
     aside {
-        transform: translateX(-100%);
+        position: fixed;
+        height: 100vh;
+        height: 100dvh; /* For mobile browsers */
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .group:hover {
+        transform: none;
     }
     
-    aside.w-80 {
-        transform: translateX(0);
+    .active\:scale-95:active {
+        transform: scale(0.95);
+    }
+}
+
+/* Tooltip z-index fix */
+.z-60 {
+    z-index: 60;
+}
+
+.z-\[60\] {
+    z-index: 60;
+}
+
+.z-\[70\] {
+    z-index: 70;
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .xs\:block {
+        display: block;
+    }
+}
+
+/* Prevent layout shift on mobile */
+@media (max-width: 1024px) {
+    .transition-all {
+        transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    }
+}
+
+/* Safe area for modern mobile devices */
+@supports (padding-top: env(safe-area-inset-top)) {
+    @media (max-width: 1024px) {
+        .fixed.top-0 {
+            padding-top: env(safe-area-inset-top);
+        }
     }
 }
 </style>

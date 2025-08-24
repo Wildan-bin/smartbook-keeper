@@ -34,29 +34,33 @@ defineProps<{
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4 ">
                     <Link
                         v-if="$page.props.auth.user"
-                        :href="route('dashboard')"
-                        class="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#007abb] to-[#2FABEC] text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                        :href="route('logout')"
+                        method="post"
+                        as="button"
+                        class="inline-flex items-center text-sm sm:text-md gap-2 px-3 sm:px-6 py-2.5 bg-gradient-to-r from-[#007abb] to-[#2FABEC] text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                     >
-                        <span>Dashboard</span>
+                        <span class="">Keluar</span>
                         <ArrowRight class="w-4 h-4" />
                     </Link>
                     <template v-else>
-                        <Link
-                            :href="route('login')"
-                            class="px-5 py-2.5 text-sm font-medium text-gray-700 hover:text-[#007abb] transition-colors duration-200"
-                        >
-                            Masuk
-                        </Link>
-                        <Link
-                            :href="route('register')"
-                            class="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#007abb] to-[#2FABEC] text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                        >
-                            <span>Daftar</span>
-                            <ArrowRight class="w-4 h-4" />
-                        </Link>
+                        <div class="flex flex-col gap-4 items-center hidden sm:block">
+                            <Link
+                                :href="route('login')"
+                                class=" w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-gray-700 hover:text-[#007abb] transition-colors duration-200 text-center"
+                            >
+                                Masuk
+                            </Link>
+                            <Link
+                                :href="route('register')"
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#007abb] to-[#2FABEC] text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                            >
+                                <span>Daftar</span>
+                                <ArrowRight class="w-4 h-4" />
+                            </Link>
+                        </div>
                     </template>
                 </div>
             </nav>
@@ -76,7 +80,7 @@ defineProps<{
                     <div class="mb-12 flex items-center justify-center gap-8">
                         <div class="group">
                             <img 
-                                src="{{ asset('images/unmer-smartbookkeeper.png') }}" 
+                                src="images/unmer-smartbookkeeper.png" 
                                 alt="Universitas Merdeka Malang" 
                                 class="h-20 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
                             />
@@ -84,7 +88,7 @@ defineProps<{
                         <div class="w-px h-16 bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
                         <div class="group">
                             <img 
-                                src="{{ asset('images/diktisainter-smartbookkeeper.png') }}" 
+                                src="images/diktisainter-smartbookkeeper.png" 
                                 alt="Pengabdian Kepada Masyarakat" 
                                 class="h-20 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
                             />
@@ -93,7 +97,7 @@ defineProps<{
 
                     <!-- Main Title -->
                     <div class="mb-8">
-                        <h1 class="text-6xl font-bold tracking-tight text-gray-900 sm:text-7xl mb-4">
+                        <h1 class="sm:text-6xl text-4xl font-bold tracking-tight text-gray-900 sm:text-7xl mb-4">
                             <span class="bg-gradient-to-r from-[#007abb] to-[#2FABEC] bg-clip-text text-transparent">
                                 Smart BookKeeper
                             </span>
