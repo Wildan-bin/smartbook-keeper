@@ -169,7 +169,7 @@ const printReport = () => {
     <MainLayout :user="user">
         <!-- Main Visible Content -->
         <div 
-            class="py-4 sm:py-6 space-y-4 sm:space-y-6"
+            class="py-4 sm:py-6 space-y-4 sm:space-y-6 text-black"
             :class=" [
                 isMobile ? 'px-4' : isTablet ? 'px-6' : 'ps-16 pe-8'
             ]"

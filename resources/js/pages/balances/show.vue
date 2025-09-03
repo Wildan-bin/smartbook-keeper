@@ -96,7 +96,7 @@ const user = usePage().props.auth.user;
 
 <template>
     <MainLayout :user="user">
-        <div class="px-4 sm:px-6 lg:ps-16 lg:pe-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div class="px-4 sm:px-6 lg:ps-16 lg:pe-8 py-4 sm:py-6 space-y-4 sm:space-y-6 text-black">
             <!-- Header Section -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>

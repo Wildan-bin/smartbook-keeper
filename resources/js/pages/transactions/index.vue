@@ -62,6 +62,26 @@ const editForm = useForm({
 const showDeleteConfirm = ref(false)
 const deleteTransactionId = ref(null)
 
+// State for success message
+const showSuccessMessage = ref(false)
+
+// ADD: Computed untuk mendapatkan saldo dompet yang dipilih
+const selectedBalance = computed(() => {
+    if (!form.balance_id) return null
+    return props.balances.find(balance => balance.id == form.balance_id)
+})
+
+// ADD: Computed untuk validasi saldo
+const isInsufficientBalance = computed(() => {
+    if (form.type !== 'expense' || !selectedBalance.value || !form.amount) {
+        return false
+    }
+    return parseFloat(form.amount) > selectedBalance.value.current_amount
+})
+
+// ADD: State untuk pesan error saldo
+const showBalanceError = ref(false)
+
 const checkScreenSize = () => {
     const width = window.innerWidth
     isMobile.value = width < 640
@@ -96,6 +116,21 @@ const filterCategories = computed(() => {
 })
 
 const submit = () => {
+    // Reset error state
+    showBalanceError.value = false
+    
+    // Validasi saldo untuk pengeluaran
+    if (form.type === 'expense' && selectedBalance.value) {
+        if (parseFloat(form.amount) > selectedBalance.value.current_amount) {
+            showBalanceError.value = true
+            // Auto hide error setelah 5 detik
+            setTimeout(() => {
+                showBalanceError.value = false
+            }, 5000)
+            return
+        }
+    }
+    
     form.post(route('transactions.store'), {
         onSuccess: () => {
             form.reset()
@@ -240,6 +275,15 @@ const formatCurrency = (amount) => {
     }).format(amount)
 }
 
+// ADD: Function untuk format currency yang lebih sederhana
+const formatCurrencySimple = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+    }).format(amount)
+}
+
 const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
         day: '2-digit',
@@ -247,9 +291,6 @@ const formatDate = (dateString) => {
         year: isMobile.value ? '2-digit' : 'numeric'
     })
 }
-
-// State for success message
-const showSuccessMessage = ref(false)
 
 // Get balance percentage for visual indicator
 const getBalanceStatus = () => {
@@ -289,7 +330,7 @@ const hasActiveFilters = computed(() => {
     <MainLayout :user="user">
         <!-- Mobile-Responsive Container -->
         <div 
-            class="space-y-4 sm:space-y-6"
+            class="space-y-4 sm:space-y-6 text-black"
             :class=" [
                 isMobile ? 'px-4 py-4' : isTablet ? 'px-6 py-5 ps-10 pe-8' : 'ps-16 pe-8 py-6'
             ]"
@@ -525,6 +566,46 @@ const hasActiveFilters = computed(() => {
                     </p>
                 </div>
 
+                <!-- ADD: Balance Error Message -->
+                <div 
+                    v-if="showBalanceError" 
+                    class="mb-4 bg-red-50 border border-red-200 text-red-700 shadow-sm animate-pulse"
+                    :class=" [
+                        isMobile ? 'px-4 py-3 rounded-lg' : 'px-6 py-4 rounded-xl sm:rounded-2xl'
+                    ]"
+                >
+                    <div class="flex items-center">
+                        <svg 
+                            class="mr-2 flex-shrink-0"
+                            :class=" [
+                                isMobile ? 'w-4 h-4' : 'w-5 h-5'
+                            ]"
+                            fill="currentColor" 
+                            viewBox="0 0 20 20"
+                        >
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div>
+                            <span 
+                                class="font-medium"
+                                :class=" [
+                                    isMobile ? 'text-sm' : 'text-base'
+                                ]"
+                            >
+                                ⚠️ Saldo tidak mencukupi!
+                            </span>
+                            <p 
+                                class="mt-1"
+                                :class=" [
+                                    isMobile ? 'text-xs' : 'text-sm'
+                                ]"
+                            >
+                                Saldo pada dompet "{{ selectedBalance?.name }}" hanya {{ formatCurrencySimple(selectedBalance?.current_amount || 0) }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <form @submit.prevent="submit" class="space-y-4 sm:space-y-6">
                     <div 
                         class="grid gap-4 sm:gap-6"
@@ -614,19 +695,56 @@ const hasActiveFilters = computed(() => {
                             </label>
                             <select 
                                 v-model="form.balance_id" 
-                                class="w-full border border-gray-300 focus:border-[#007abb] focus:ring-2 focus:ring-blue-100 bg-gray-50 focus:bg-white transition-all duration-200"
+                                class="w-full border focus:border-[#007abb] focus:ring-2 focus:ring-blue-100 bg-gray-50 focus:bg-white transition-all duration-200"
                                 :class=" [
                                     isMobile 
                                         ? 'px-3 py-2.5 rounded-lg text-sm' 
-                                        : 'px-4 py-3 rounded-xl text-base'
+                                        : 'px-4 py-3 rounded-xl text-base',
+                                    isInsufficientBalance 
+                                        ? 'border-red-300 bg-red-50' 
+                                        : 'border-gray-300'
                                 ]"
                                 required
                             >
                                 <option value="" disabled>Pilih dompet...</option>
                                 <option v-for="balance in balances" :key="balance.id" :value="balance.id">
-                                    {{ balance.name }}
+                                    {{ balance.name }} ({{ formatCurrencySimple(balance.current_amount) }})
                                 </option>
                             </select>
+                            
+                            <!-- ADD: Info saldo untuk dompet terpilih -->
+                            <div 
+                                v-if="selectedBalance && form.type === 'expense'" 
+                                class="flex items-center justify-between p-2 rounded-lg"
+                                :class=" [
+                                    isInsufficientBalance 
+                                        ? 'bg-red-50 text-red-700' 
+                                        : 'bg-blue-50 text-blue-700'
+                                ]"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <span :class="[isMobile ? 'text-xs' : 'text-sm']">
+                                        {{ isInsufficientBalance ? '⚠️' : 'ℹ️' }}
+                                    </span>
+                                    <span 
+                                        class="font-medium"
+                                        :class=" [
+                                            isMobile ? 'text-xs' : 'text-sm'
+                                        ]"
+                                    >
+                                        Saldo tersedia: {{ formatCurrencySimple(selectedBalance.current_amount) }}
+                                    </span>
+                                </div>
+                                <span 
+                                    v-if="isInsufficientBalance"
+                                    class="font-semibold"
+                                    :class=" [
+                                        isMobile ? 'text-xs' : 'text-sm'
+                                    ]"
+                                >
+                                    Tidak mencukupi
+                                </span>
+                            </div>
                         </div>
 
                         <!-- Category Selection - Mobile Optimized -->
@@ -656,7 +774,7 @@ const hasActiveFilters = computed(() => {
                             </select>
                         </div>
 
-                        <!-- Amount Input - Mobile Optimized -->
+                        <!-- ENHANCED: Amount Input dengan validasi visual -->
                         <div class="space-y-2">
                             <label 
                                 class="block font-medium text-gray-700"
@@ -678,17 +796,29 @@ const hasActiveFilters = computed(() => {
                                 <input 
                                     type="number" 
                                     v-model="form.amount" 
-                                    class="w-full border border-gray-300 focus:border-[#007abb] focus:ring-2 focus:ring-blue-100 bg-gray-50 focus:bg-white transition-all duration-200"
+                                    class="w-full border focus:ring-2 focus:ring-blue-100 bg-gray-50 focus:bg-white transition-all duration-200"
                                     :class=" [
                                         isMobile 
                                             ? 'pl-10 pr-3 py-2.5 rounded-lg text-sm' 
-                                            : 'pl-12 pr-4 py-3 rounded-xl text-base'
+                                            : 'pl-12 pr-4 py-3 rounded-xl text-base',
+                                        isInsufficientBalance 
+                                            ? 'border-red-300 focus:border-red-500 bg-red-50' 
+                                            : 'border-gray-300 focus:border-[#007abb]'
                                     ]"
                                     placeholder="0"
                                     min="0"
                                     step="1"
                                     required
                                 >
+                                <!-- ADD: Warning icon untuk amount yang melebihi saldo -->
+                                <div 
+                                    v-if="isInsufficientBalance"
+                                    class="absolute right-3 top-1/2 transform -translate-y-1/2"
+                                >
+                                    <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                </div>
                             </div>
                         </div>
 
@@ -754,12 +884,15 @@ const hasActiveFilters = computed(() => {
                     >
                         <button 
                             type="submit" 
-                            :disabled="form.processing"
-                            class="inline-flex items-center gap-2 bg-gradient-to-r from-[#007abb] to-[#2FABEC] text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                            :disabled="form.processing || isInsufficientBalance"
+                            class="inline-flex items-center gap-2 font-semibold shadow-lg transition-all duration-200 transform disabled:cursor-not-allowed disabled:transform-none"
                             :class=" [
                                 isMobile 
                                     ? 'px-6 py-2.5 rounded-lg text-sm w-full sm:w-auto justify-center' 
-                                    : 'px-8 py-3 rounded-xl text-base'
+                                    : 'px-8 py-3 rounded-xl text-base',
+                                isInsufficientBalance || form.processing
+                                    ? 'bg-gray-400 text-white opacity-50' 
+                                    : 'bg-gradient-to-r from-[#007abb] to-[#2FABEC] text-white hover:shadow-xl hover:scale-105'
                             ]"
                         >
                             <svg 
@@ -773,6 +906,15 @@ const hasActiveFilters = computed(() => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                             <svg 
+                                v-else-if="isInsufficientBalance"
+                                class=""
+                                :class="[isMobile ? 'w-4 h-4' : 'w-5 h-5']"
+                                fill="currentColor" 
+                                viewBox="0 0 20 20"
+                            >
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                            <svg 
                                 v-else 
                                 class=""
                                 :class="[isMobile ? 'w-4 h-4' : 'w-5 h-5']"
@@ -782,7 +924,11 @@ const hasActiveFilters = computed(() => {
                             >
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
-                            <span>{{ form.processing ? 'Menyimpan...' : 'Simpan Transaksi' }}</span>
+                            <span>
+                                {{ form.processing ? 'Menyimpan...' : 
+                                   isInsufficientBalance ? 'Saldo Tidak Mencukupi' : 
+                                   'Simpan Transaksi' }}
+                            </span>
                         </button>
                     </div>
                 </form>
@@ -1499,7 +1645,7 @@ const hasActiveFilters = computed(() => {
         <!-- Edit Modal -->
         <div 
             v-if="showEditModal"
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            class="fixed inset-0 bg-black bg-opacity-50 text-black flex items-center justify-center z-50 p-4"
             @click.self="closeEditModal"
         >
             <div 
@@ -1854,5 +2000,26 @@ const hasActiveFilters = computed(() => {
         background-size: 1.5em 1.5em;
         padding-right: 2.5rem;
     }
+}
+
+/* ADD: Custom animation untuk balance error */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ADD: Smooth transition untuk form validation states */
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
 }
 </style>

@@ -15,7 +15,8 @@
             border-bottom: 3px solid #007abb; 
             padding-bottom: 15px; 
             margin-bottom: 25px; 
-            background: linear-gradient(135deg, #007abb, #2FABEC);
+            /* background: linear-gradient(135deg, #007abb, #2FABEC); */
+            background-color: #007abb;
             color: white;
             padding: 20px;
             border-radius: 8px;

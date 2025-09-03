@@ -21,7 +21,7 @@ class ReportController extends Controller
         $startOfMonth = $date->copy()->startOfMonth();
         $endOfMonth = $date->copy()->endOfMonth();
 
-        // Get transactions for the selected month with categories
+        // Get transactions for the selected month with categories (USER FILTERED)
         $transactions = Transaction::where('user_id', $user->id)
             ->whereBetween('date', [$startOfMonth, $endOfMonth])
             ->with(['balance', 'category'])
@@ -53,7 +53,7 @@ class ReportController extends Controller
         $incomeTransactions = $transactions->where('type', 'income')->values();
         $expenseTransactions = $transactions->where('type', 'expense')->values();
 
-        // Get available months for filter
+        // Get available months for filter (USER FILTERED)
         $availableMonths = Transaction::where('user_id', $user->id)
             ->selectRaw('DISTINCT DATE_FORMAT(date, "%Y-%m") as month')
             ->orderBy('month', 'desc')

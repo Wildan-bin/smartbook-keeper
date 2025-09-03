@@ -43,7 +43,14 @@ class TransactionController extends Controller
         }
 
         if (!empty($filters['category'])) {
-            $query->where('category_id', $filters['category']);
+            // UPDATE: Tambah validasi category milik user
+            $categoryExists = Category::where('id', $filters['category'])
+                ->where('user_id', Auth::id())
+                ->exists();
+            
+            if ($categoryExists) {
+                $query->where('category_id', $filters['category']);
+            }
         }
 
         if (!empty($filters['balance'])) {
@@ -54,7 +61,7 @@ class TransactionController extends Controller
         $transactions = $query->latest('date')
             ->latest('created_at')
             ->paginate(20)
-            ->withQueryString(); // Preserve query parameters in pagination
+            ->withQueryString();
 
         return Inertia::render('transactions/index', [
             'transactions' => $transactions,
@@ -62,9 +69,12 @@ class TransactionController extends Controller
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),
-            'categories' => Category::orderBy('name')->get(),
+            // UPDATE: Filter categories by user
+            'categories' => Category::where('user_id', Auth::id())
+                ->orderBy('name')
+                ->get(),
             'totalBalance' => $this->calculateTotalBalance(),
-            'filters' => array_filter($filters), // Only send non-empty filters
+            'filters' => array_filter($filters),
         ]);
     }
 
@@ -75,40 +85,12 @@ class TransactionController extends Controller
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),
-            'categories' => Category::orderBy('name')->get(),
+            // UPDATE: Filter categories by user
+            'categories' => Category::where('user_id', Auth::id())
+                ->orderBy('name')
+                ->get(),
             'totalBalance' => $this->calculateTotalBalance()
         ]);
-    }
-
-    public function storeBalance(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'initial_amount' => 'nullable|numeric|min:0',
-            'currency' => 'required|string|size:3',
-        ]);
-
-        // Check if balance name already exists for this user
-        $existingBalance = Balance::where('user_id', Auth::id())
-            ->where('name', $validated['name'])
-            ->where('is_active', true)
-            ->first();
-
-        if ($existingBalance) {
-            return redirect()->back()
-                ->withErrors(['name' => 'A wallet with this name already exists.']);
-        }
-
-        // Create balance with user_id
-        Balance::create([
-            ...array_filter($validated), // Remove null/empty values
-            'user_id' => Auth::id(),
-            'initial_amount' => $validated['initial_amount'] ?? 0,
-            'current_amount' => $validated['initial_amount'] ?? 0,
-            'is_active' => true,
-        ]);
-
-        return redirect()->back()->with('success', 'Wallet added successfully');
     }
 
     public function storeCategory(Request $request)
@@ -120,8 +102,9 @@ class TransactionController extends Controller
             'color' => 'nullable|string|max:7',
         ]);
 
-        // Check if category name already exists for this type
-        $existingCategory = Category::where('name', $validated['name'])
+        // UPDATE: Check category name exists for this user and type
+        $existingCategory = Category::where('user_id', Auth::id())
+            ->where('name', $validated['name'])
             ->where('type', $validated['type'])
             ->first();
 
@@ -130,7 +113,11 @@ class TransactionController extends Controller
                 ->withErrors(['name' => 'A category with this name already exists for this type.']);
         }
 
-        Category::create($validated);
+        // UPDATE: Create category with user_id
+        Category::create([
+            ...$validated,
+            'user_id' => Auth::id()
+        ]);
 
         return redirect()->back()
             ->with('success', 'Category added successfully');
@@ -142,10 +129,9 @@ class TransactionController extends Controller
             'balance_id' => 'required|exists:balances,id',
             'category_id' => 'required|exists:categories,id',
             'type' => 'required|in:income,expense',
-            'amount' => 'required|numeric|min:0.01', // Minimum amount
+            'amount' => 'required|numeric|min:0.01',
             'description' => 'nullable|string|max:255',
-            // 'date' => 'required|date|before_or_equal:today' // Can't be future date
-            'date' => 'required|date' // Can't be future date
+            'date' => 'required|date'
         ]);
 
         // Check if balance belongs to current user
@@ -159,8 +145,17 @@ class TransactionController extends Controller
                 ->withErrors(['balance_id' => 'Selected wallet is not valid.']);
         }
 
+        // UPDATE: Check if category belongs to current user
+        $category = Category::where('id', $validated['category_id'])
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$category) {
+            return redirect()->back()
+                ->withErrors(['category_id' => 'Selected category is not valid.']);
+        }
+
         // Check if category type matches transaction type
-        $category = Category::find($validated['category_id']);
         if ($category->type !== $validated['type']) {
             return redirect()->back()
                 ->withErrors(['category_id' => 'Category type does not match transaction type.']);
@@ -178,47 +173,8 @@ class TransactionController extends Controller
             'user_id' => Auth::id()
         ]);
 
-        // tidak digunakan karena sudah diatur di model
-        // Update balance amount
-        // if ($validated['type'] === 'income') {
-        //     $balance->increment('current_amount', $validated['amount']);
-        // } else {
-        //     $balance->decrement('current_amount', $validated['amount']);
-        // }
-
         return redirect()->back()
             ->with('success', 'Transaction recorded successfully');
-    }
-
-    public function destroy(Transaction $transaction)
-    {
-        // Check if transaction belongs to current user
-        if ($transaction->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        // PERBAIKAN: Load balance relation untuk memastikan data fresh
-        // $balance = $transaction->balance()->lockForUpdate()->first();
-        
-        // if (!$balance) {
-        //     return redirect()->back()
-        //         ->withErrors(['error' => 'Balance not found for this transaction.']);
-        // }
-
-        // Reverse the balance change dengan logika yang benar
-        // if ($transaction->type === 'income') {
-        //     // Jika income dihapus, saldo harus berkurang
-        //     $balance->decrement('current_amount', $transaction->amount);
-        // } else {
-        //     // Jika expense dihapus, saldo harus bertambah
-        //     $balance->increment('current_amount', $transaction->amount);
-        // }
-
-        // Delete transaction setelah balance diupdate
-        $transaction->delete();
-
-        return redirect()->back()
-            ->with('success', 'Transaction deleted successfully');
     }
 
     public function edit(Transaction $transaction)
@@ -234,7 +190,10 @@ class TransactionController extends Controller
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),
-            'categories' => Category::orderBy('name')->get(),
+            // UPDATE: Filter categories by user
+            'categories' => Category::where('user_id', Auth::id())
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
@@ -251,7 +210,6 @@ class TransactionController extends Controller
             'type' => 'required|in:income,expense',
             'amount' => 'required|numeric|min:0.01',
             'description' => 'nullable|string|max:255',
-            // 'date' => 'required|date|before_or_equal:today'
             'date' => 'required|date'
         ]);
 
@@ -266,28 +224,35 @@ class TransactionController extends Controller
                 ->withErrors(['balance_id' => 'Selected wallet is not valid.']);
         }
 
+        // UPDATE: Check if category belongs to current user
+        $category = Category::where('id', $validated['category_id'])
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$category) {
+            return redirect()->back()
+                ->withErrors(['category_id' => 'Selected category is not valid.']);
+        }
+
         // Check if category type matches transaction type
-        $category = Category::find($validated['category_id']);
         if ($category->type !== $validated['type']) {
             return redirect()->back()
                 ->withErrors(['category_id' => 'Category type does not match transaction type.']);
         }
 
-        // PERBAIKAN: Load old balance dengan fresh data
+        // Load old balance dengan fresh data
         $oldBalance = $transaction->balance()->lockForUpdate()->first();
 
-        // Reverse original transaction effect dengan logika yang benar
+        // Reverse original transaction effect
         if ($transaction->type === 'income') {
-            // Batalkan income lama (kurangi saldo)
             $oldBalance->decrement('current_amount', $transaction->amount);
         } else {
-            // Batalkan expense lama (tambah saldo)
             $oldBalance->increment('current_amount', $transaction->amount);
         }
 
         // For expenses with new balance, check if balance has enough funds
         if ($validated['type'] === 'expense' && $newBalance->current_amount < $validated['amount']) {
-            // Restore original transaction effect sebelum return error
+            // Restore original transaction effect before return error
             if ($transaction->type === 'income') {
                 $oldBalance->increment('current_amount', $transaction->amount);
             } else {
@@ -298,12 +263,10 @@ class TransactionController extends Controller
                 ->withErrors(['amount' => 'Insufficient balance in selected wallet.']);
         }
 
-        // Apply new transaction effect dengan logika yang benar
+        // Apply new transaction effect
         if ($validated['type'] === 'income') {
-            // Terapkan income baru (tambah saldo)
             $newBalance->increment('current_amount', $validated['amount']);
         } else {
-            // Terapkan expense baru (kurangi saldo)
             $newBalance->decrement('current_amount', $validated['amount']);
         }
 
@@ -312,6 +275,26 @@ class TransactionController extends Controller
 
         return redirect()->route('transactions.index')
             ->with('success', 'Transaction updated successfully');
+    }
+
+    public function destroy(Transaction $transaction)
+    {
+        // Check if transaction belongs to current user
+        if ($transaction->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        try {
+            // Delete transaction - balance akan otomatis terupdate karena model hook
+            $transaction->delete();
+
+            return redirect()->back()
+                ->with('success', 'Transaction deleted successfully');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['error' => 'Failed to delete transaction: ' . $e->getMessage()]);
+        }
     }
 
     private function calculateTotalBalance(): float

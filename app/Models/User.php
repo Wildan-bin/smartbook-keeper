@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Balance;
+use App\Models\Category;
+use App\Models\Transaction;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+
 
 class User extends Authenticatable
 {
@@ -47,14 +51,20 @@ class User extends Authenticatable
         ];
     }
 
+    // Relationships
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
     public function balances(): HasMany
     {
         return $this->hasMany(Balance::class);
     }
 
-    public function transactions(): HasMany
+    public function categories(): HasMany
     {
-        return $this->hasMany(Transaction::class);
+        return $this->hasMany(Category::class);
     }
 
     // Helper to get total balance across all wallets

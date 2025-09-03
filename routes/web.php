@@ -27,12 +27,19 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     
     Route::get('/balances', [TransactionController::class, 'balances'])->name('balances.index');
-    Route::post('/balances', [TransactionController::class, 'storeBalance'])->name('balances.store');
+    Route::post('/balances', [BalanceController::class, 'storeBalance'])->name('balances.store');
     Route::post('/balances/category', [TransactionController::class, 'storeCategory'])->name('balances.category.store');
 
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/pdf-preview', [ReportController::class, 'pdfPreview'])->name('reports.pdf-preview');
     Route::get('/reports/download-pdf', [ReportController::class, 'downloadPdf'])->name('reports.download-pdf');
+
+    // Category routes (untuk halaman balances/show)
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    Route::get('/categories/by-type', [CategoryController::class, 'getByType'])->name('categories.by-type');
 });
 
 require __DIR__.'/settings.php';
