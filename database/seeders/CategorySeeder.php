@@ -26,7 +26,9 @@ class CategorySeeder extends Seeder
         ];
 
         foreach (array_merge($incomeCategories, $expenseCategories) as $category) {
-            Category::create($category);
+            Category::create(array_merge($category, [
+                'user_id' => 1,
+            ]));
         }
     }
 }

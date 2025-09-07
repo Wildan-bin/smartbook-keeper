@@ -50,12 +50,22 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        $data = $request->json()->all(); 
+        $request->merge($data); 
+
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
         ]);
 
         $token = $this->authService->login($request->only('email', 'password'));
+
+        if (!$token) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid credentials'
+            ], 401);
+        }
 
         return response()->json([
             'status' => 'success',

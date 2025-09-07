@@ -32,7 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/balances', [FinancialController::class, 'balances']);
     Route::post('/balances', [FinancialController::class, 'createBalance']);
     Route::get('/balances/{id}', [FinancialController::class, 'getBalance']);
-    Route::put('/balances/{id}', [FinancialController::class, 'updateBalance']);    
+    Route::put('/balances/{id}', [FinancialController::class, 'updateBalance']);
     Route::delete('/balances/{id}', [FinancialController::class, 'deleteBalance']);
     Route::get('/total-balance', [FinancialController::class, 'totalBalance']);
     
@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/categories/{id}', [CategoryApiController::class, 'show']);
     Route::put('/categories/{id}', [CategoryApiController::class, 'update']);
     Route::delete('/categories/{id}', [CategoryApiController::class, 'destroy']);
+
     Route::get('/categories/income', [CategoryApiController::class, 'getIncomeCategories']);
     Route::get('/categories/expense', [CategoryApiController::class, 'getExpenseCategories']);
     

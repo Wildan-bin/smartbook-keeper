@@ -17,7 +17,7 @@ class FinancialController extends Controller
         $this->financialService = $financialService;
     }
 
-    // EXISTING METHODS - TETAP SAMA
+    // ✅ Ambil semua balances user
     public function balances(Request $request)
     {
         $balances = $this->financialService->getUserBalances(
@@ -25,19 +25,26 @@ class FinancialController extends Controller
             $request->get('month')
         );
 
-        return BalanceResource::collection($balances);
+        return response()->json([
+            'status' => 'success',
+            'data' => BalanceResource::collection($balances)
+        ]);
     }
 
+    // ✅ Total saldo user
     public function totalBalance(Request $request)
     {
         $totalBalance = $this->financialService->getUserTotalBalance(
             $request->user()->id
         );
 
-        return response()->json($totalBalance);
+        return response()->json([
+            'total' => $totalBalance
+        ]);
     }
 
-    // NEW METHODS - TAMBAHAN BARU
+
+    // ✅ Buat dompet baru
     public function createBalance(Request $request)
     {
         try {
@@ -63,44 +70,31 @@ class FinancialController extends Controller
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to create wallet',
-                'error' => $e->getMessage()
-            ], 500);
         }
     }
 
+    // ✅ Ambil detail balance
     public function getBalance(Request $request, $id)
     {
-        try {
-            $balance = $this->financialService->getBalance(
-                $request->user()->id,
-                $id
-            );
+        $balance = $this->financialService->getBalance(
+            $request->user()->id,
+            $id
+        );
 
-            if (!$balance) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Wallet not found'
-                ], 404);
-            }
-
-            return response()->json([
-                'status' => 'success',
-                'data' => new BalanceResource($balance)
-            ]);
-
-        } catch (\Exception $e) {
+        if (!$balance) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to get wallet',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Wallet not found'
+            ], 404);
         }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => new BalanceResource($balance)
+        ]);
     }
 
+    // ✅ Update balance
     public function updateBalance(Request $request, $id)
     {
         try {
@@ -134,41 +128,27 @@ class FinancialController extends Controller
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to update wallet',
-                'error' => $e->getMessage()
-            ], 500);
         }
     }
 
+    // ✅ Hapus balance
     public function deleteBalance(Request $request, $id)
     {
-        try {
-            $result = $this->financialService->deleteBalance(
-                $request->user()->id,
-                $id
-            );
+        $result = $this->financialService->deleteBalance(
+            $request->user()->id,
+            $id
+        );
 
-            if (!$result) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Wallet not found or cannot be deleted'
-                ], 404);
-            }
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Wallet deleted successfully'
-            ]);
-
-        } catch (\Exception $e) {
+        if (!$result) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to delete wallet',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Wallet not found or cannot be deleted'
+            ], 404);
         }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Wallet deleted successfully'
+        ]);
     }
 }

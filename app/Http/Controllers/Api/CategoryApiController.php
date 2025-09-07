@@ -3,41 +3,44 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\CategoryService;
+use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class CategoryApiController extends Controller
 {
-    protected $categoryService;
-
-    public function __construct(CategoryService $categoryService)
-    {
-        $this->categoryService = $categoryService;
-    }
-
+    /**
+     * List semua kategori user (bisa filter type: income/expense)
+     */
     public function index(Request $request)
     {
         try {
-            $categories = $this->categoryService->getUserCategories(
-                $request->user()->id,
-                $request->get('type')
-            );
+            $query = Category::where('user_id', Auth::id());
+
+            if ($request->has('type') && in_array($request->get('type'), ['income', 'expense'])) {
+                $query->where('type', $request->get('type'));
+            }
+
+            $categories = $query->orderBy('name')->get();
 
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'data' => $categories
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Failed to get categories',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
+    /**
+     * Buat kategori baru
+     */
     public function store(Request $request)
     {
         try {
@@ -48,32 +51,38 @@ class CategoryApiController extends Controller
                 'color' => 'nullable|string|max:7',
             ]);
 
-            $category = $this->categoryService->createCategory(
-                $request->user()->id,
-                $validated
-            );
+            $category = Category::create([
+                'user_id' => Auth::id(),
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'icon' => $validated['icon'] ?? null,
+                'color' => $validated['color'] ?? null,
+            ]);
 
             return response()->json([
-                'status' => 'success',
+                'success' => true,
                 'message' => 'Category created successfully',
                 'data' => $category
             ], 201);
 
         } catch (ValidationException $e) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Failed to create category',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
+    /**
+     * Detail kategori
+     */
     public function show($id)
     {
         try {
@@ -102,6 +111,9 @@ class CategoryApiController extends Controller
         }
     }
 
+    /**
+     * Update kategori
+     */
     public function update(Request $request, $id)
     {
         try {
@@ -123,14 +135,14 @@ class CategoryApiController extends Controller
                 'color' => 'nullable|string|max:7',
             ]);
 
-            // Check if category name already exists for this user and type (excluding current)
-            $existingCategory = Category::where('user_id', Auth::id())
+            // Cek duplikat nama untuk user ini
+            $exists = Category::where('user_id', Auth::id())
                 ->where('name', $validated['name'])
                 ->where('type', $validated['type'])
                 ->where('id', '!=', $category->id)
-                ->first();
+                ->exists();
 
-            if ($existingCategory) {
+            if ($exists) {
                 return response()->json([
                     'success' => false,
                     'message' => 'A category with this name already exists for this type'
@@ -160,6 +172,9 @@ class CategoryApiController extends Controller
         }
     }
 
+    /**
+     * Hapus kategori
+     */
     public function destroy($id)
     {
         try {
@@ -174,7 +189,6 @@ class CategoryApiController extends Controller
                 ], 404);
             }
 
-            // Check if category has transactions
             if ($category->transactions()->count() > 0) {
                 return response()->json([
                     'success' => false,
@@ -198,6 +212,9 @@ class CategoryApiController extends Controller
         }
     }
 
+    /**
+     * Ambil kategori income user
+     */
     public function getIncomeCategories()
     {
         try {
@@ -220,6 +237,9 @@ class CategoryApiController extends Controller
         }
     }
 
+    /**
+     * Ambil kategori expense user
+     */
     public function getExpenseCategories()
     {
         try {
@@ -242,3 +262,4 @@ class CategoryApiController extends Controller
         }
     }
 }
+
